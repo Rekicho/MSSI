@@ -6,6 +6,10 @@ globals [
   particle2         ;; second particle currently colliding
   ps psd be cdu cds pan ;; current counts
   percent-PS percent-PSD percent-BE percent-CDU percent-CDS percent-PAN ;; percentage of current counts
+  votes-PS votes-PSD votes-BE votes-CDU votes-CDS votes-PAN
+  elected-party
+  last-election
+  last-tick
 ]
 
 breed [particles particle]
@@ -17,6 +21,7 @@ particles-own [
   party
   charisma
   conviction
+  willingnessToVote
 ]
 
 
@@ -26,11 +31,89 @@ particles-own [
 
 to setup
   clear-all
-  set-default-shape particles "circle"
+  set-default-shape particles "triangle 2"
   set box-edge max-pxcor - 1
-  ask patches with [(abs pxcor = box-edge or abs pycor = box-edge) and
-                    abs pxcor <= box-edge and abs pycor <= box-edge]
-    [ set pcolor yellow ]
+
+  let x -150
+  let y -150
+
+
+  while [y < -150 + world-height]
+  [
+    let random-party random(100)
+
+    (ifelse
+      random-party < 42 [
+        ask patches with
+        [ pxcor >= x and pxcor < x + partyZone
+          and
+          pycor >= y and pycor < y + partyZone
+        ]
+        [
+          set pcolor pink
+        ]
+      ]
+      random-party < 74 [
+        ask patches with
+        [ pxcor >= x and pxcor < x + partyZone
+          and
+          pycor >= y and pycor < y + partyZone
+        ]
+        [
+          set pcolor orange
+        ]
+      ]
+      random-party < 85 [
+        ask patches with
+        [ pxcor >= x and pxcor < x + partyZone
+          and
+          pycor >= y and pycor < y + partyZone
+        ]
+        [
+          set pcolor brown
+        ]
+      ]
+      random-party < 92 [
+        ask patches with
+        [ pxcor >= x and pxcor < x + partyZone
+          and
+          pycor >= y and pycor < y + partyZone
+        ]
+        [
+          set pcolor red
+        ]
+      ]
+      random-party < 97 [
+        ask patches with
+        [ pxcor >= x and pxcor < x + partyZone
+          and
+          pycor >= y and pycor < y + partyZone
+        ]
+        [
+          set pcolor blue
+        ]
+      ]
+      [
+        ask patches with
+        [ pxcor >= x and pxcor < x + partyZone
+          and
+          pycor >= y and pycor < y + partyZone
+        ]
+        [
+          set pcolor green
+        ]
+      ]
+      )
+
+    ifelse x >= -150 + world-width
+    [
+      set y (y + partyZone)
+      set x -150
+    ]
+    [
+      set x (x + partyZone)
+    ]
+  ]
   make-particles
   set particle1 nobody
   set particle2 nobody
@@ -39,16 +122,15 @@ to setup
   ask particles [ check-for-wall-collision ]
   ask particles [ check-for-particle-collision ]
   update-variables
+  set last-election 0
 end
 
 to make-particles
   create-particles population-size [
-    set speed 1
-    set size 2
-    set mass 4
+    set speed 3
+    set size 3
+    set mass 3
     set energy kinetic-energy
-
-    let random-party random(100)
 
     ;não pode ser < 0 ou > 1
     ;soma deve ser 1
@@ -61,48 +143,10 @@ to make-particles
       random-normal 3.32 std
     )
 
-    let min-conv min conviction
-    set conviction map [ i -> i + (abs min-conv) ] conviction
-    let sum-conv sum conviction
-    set conviction map [ i -> i / sum-conv ] conviction
-    let max-conv max conviction
-
-    let i 0
-
-    while [i < (length conviction)]
-    [
-      if (item i conviction) = max-conv [ set party i ]
-      set i (i + 1)
-    ]
-
-    (ifelse
-      random-party < 42 [
-        set party 0
-        set conviction (list 1 0 0 0 0 0)
-      ]
-      random-party < 74 [
-        set party 1
-        set conviction (list 0 1 0 0 0 0)
-      ]
-      random-party < 85 [
-        set party 2
-        set conviction (list 0 0 1 0 0 0)
-      ]
-      random-party < 92 [
-        set party 3
-        set conviction (list 0 0 0 1 0 0)
-      ]
-      random-party < 97 [
-        set party 4
-        set conviction (list 0 0 0 0 1 0)
-      ]
-      [
-        set party 5
-        set conviction (list 0 0 0 0 0 1)
-      ]
-      )
+    balanceConviction
 
     set charisma random-float(1)
+    set willingnessToVote random-float(1)
 
     recolor
   ]
@@ -143,6 +187,17 @@ to go
   [
     update-variables
     update-plots
+  ]
+  if (floor ticks) != last-election and ((remainder (floor ticks) ticksTillElection) = 0)
+  [
+    set last-election (floor ticks)
+    perform-election
+    ask particles [ decay ]
+  ]
+  if (floor ticks) != last-tick and ((remainder (floor ticks) 10) = 0)
+  [
+    set last-tick (floor ticks)
+    ask particles [ checkZone ]
   ]
 end
 
@@ -508,6 +563,80 @@ to recalculate-parties [other-particle]  ;; party procedure
 
 end
 
+to perform-election
+  set votes-PS 0
+  set votes-PSD 0
+  set votes-BE 0
+  set votes-CDU 0
+  set votes-CDS 0
+  set votes-PAN 0
+  ask particles [ vote ]
+
+  let winner max (list votes-PS votes-PSD votes-BE votes-CDU votes-CDS votes-PAN)
+
+  (ifelse
+  winner = votes-PS [ set elected-party 0 ]
+  winner = votes-PSD [ set elected-party 1 ]
+  winner = votes-BE [ set elected-party 2 ]
+  winner = votes-CDU [ set elected-party 3 ]
+  winner = votes-CDS [ set elected-party 4 ]
+  winner = votes-PAN [ set elected-party 5 ])
+end
+
+to vote
+  if ((item party conviction) * willingnessToVote) > voteTreshold
+  [
+    (ifelse
+      party = 0 [ set votes-PS votes-PS + 1 ]
+      party = 1 [ set votes-PSD votes-PSD + 1 ]
+      party = 2 [ set votes-BE votes-BE + 1 ]
+      party = 3 [ set votes-CDU votes-CDU + 1 ]
+      party = 4 [ set votes-CDS votes-CDS + 1 ]
+      party = 5 [ set votes-PAN votes-PAN + 1 ])
+  ]
+end
+
+to decay
+  if last-election > 0
+  [
+    set conviction replace-item elected-party conviction ((item elected-party conviction) * decayPercentage)
+  ]
+  balanceConviction
+
+end
+
+to checkZone
+  let zoneParty 0
+
+  (ifelse
+  pcolor = pink [ set zoneParty 0 ]
+  pcolor = orange [ set zoneParty 1 ]
+  pcolor = brown [ set zoneParty 2 ]
+  pcolor = red [ set zoneParty 3 ]
+  pcolor = blue [ set zoneParty 4 ]
+  pcolor = green [ set zoneParty 5 ])
+
+  set conviction replace-item zoneParty conviction ((item zoneParty conviction) * (1 + zoneInfluence))
+  balanceConviction
+end
+
+to balanceConviction
+  let min-conv min conviction
+  set conviction map [ i -> i + (abs min-conv) ] conviction
+  let sum-conv sum conviction
+  set conviction map [ i -> i / sum-conv ] conviction
+  let max-conv max conviction
+
+  let i 0
+
+  while [i < (length conviction)]
+  [
+    if (item i conviction) = max-conv [ set party i ]
+    set i (i + 1)
+  ]
+end
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -652,7 +781,7 @@ population-size
 population-size
 0
 500
-500.0
+250.0
 5
 1
 NIL
@@ -790,6 +919,158 @@ std
 100
 100.0
 1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1075
+51
+1247
+84
+ticksTillElection
+ticksTillElection
+10
+100
+100.0
+10
+1
+NIL
+HORIZONTAL
+
+MONITOR
+955
+48
+1053
+93
+Elected Party
+elected-party
+0
+1
+11
+
+MONITOR
+1066
+206
+1138
+251
+Votes PS
+votes-PS
+0
+1
+11
+
+MONITOR
+1166
+203
+1247
+248
+Votes PSD
+votes-PSD
+17
+1
+11
+
+MONITOR
+1069
+296
+1141
+341
+Votes BE
+votes-BE
+0
+1
+11
+
+MONITOR
+1173
+299
+1255
+344
+Votes CDU
+votes-CDU
+17
+1
+11
+
+MONITOR
+1068
+381
+1150
+426
+Votes CDS
+votes-CDS
+0
+1
+11
+
+MONITOR
+1189
+379
+1269
+424
+Votes PAN
+votes-PAN
+0
+1
+11
+
+SLIDER
+1078
+118
+1284
+151
+decayPercentage
+decayPercentage
+0
+1
+0.5
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1438
+136
+1610
+169
+partyZone
+partyZone
+10
+50
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1449
+221
+1621
+254
+zoneInfluence
+zoneInfluence
+0
+1
+0.05
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1345
+290
+1517
+323
+voteTreshold
+voteTreshold
+0
+1
+0.25
+0.05
 1
 NIL
 HORIZONTAL
