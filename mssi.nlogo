@@ -75,32 +75,32 @@ to make-particles
       set i (i + 1)
     ]
 
-    ;(ifelse
-      ;random-party < 42 [
-        ;set party 0
-        ;set conviction (list 1 0 0 0 0 0)
-      ;]
-      ;random-party < 74 [
-        ;set party 1
-        ;set conviction (list 0 1 0 0 0 0)
-      ;]
-      ;random-party < 85 [
-        ;set party 2
-        ;set conviction (list 0 0 1 0 0 0)
-      ;]
-      ;random-party < 92 [
-        ;set party 3
-        ;set conviction (list 0 0 0 1 0 0)
-      ;]
-      ;random-party < 97 [
-        ;set party 4
-        ;set conviction (list 0 0 0 0 1 0)
-      ;]
-      ;[
-        ;set party 5
-        ;set conviction (list 0 0 0 0 0 1)
-      ;]
-      ;)
+    (ifelse
+      random-party < 42 [
+        set party 0
+        set conviction (list 1 0 0 0 0 0)
+      ]
+      random-party < 74 [
+        set party 1
+        set conviction (list 0 1 0 0 0 0)
+      ]
+      random-party < 85 [
+        set party 2
+        set conviction (list 0 0 1 0 0 0)
+      ]
+      random-party < 92 [
+        set party 3
+        set conviction (list 0 0 0 1 0 0)
+      ]
+      random-party < 97 [
+        set party 4
+        set conviction (list 0 0 0 0 1 0)
+      ]
+      [
+        set party 5
+        set conviction (list 0 0 0 0 0 1)
+      ]
+      )
 
     set charisma random-float(1)
 
@@ -454,6 +454,7 @@ end
 to recalculate-parties [other-particle]  ;; party procedure
   let conviction2 [conviction] of other-particle
   let charisma2 [charisma] of other-particle
+  let party2 [party] of other-particle
 
   let sum-conviction 0
   let other-sum-conviction 0
@@ -461,8 +462,13 @@ to recalculate-parties [other-particle]  ;; party procedure
 
   while [i < (length conviction)]
   [
-    let new-conviction ((item i conviction) + (influence * (1 + (charisma2 - charisma)) * (item i conviction2)))
-    let other-new-conviction ((item i conviction2) + (influence * (1 + (charisma - charisma2)) * (item i conviction)))
+    let new-conviction (item i conviction)
+    let other-new-conviction (item i conviction2)
+
+    if (i = party) or (i = party2) [
+      set new-conviction ((item i conviction) + (influence * (1 + (charisma2 - charisma)) * (item i conviction2)))
+      set other-new-conviction ((item i conviction2) + (influence * (1 + (charisma - charisma2)) * (item i conviction)))
+    ]
 
     set sum-conviction (sum-conviction + new-conviction)
     set other-sum-conviction (other-sum-conviction + other-new-conviction)
@@ -644,7 +650,7 @@ SLIDER
 78
 population-size
 population-size
-100
+0
 500
 500.0
 5
@@ -767,7 +773,7 @@ influence
 influence
 0
 1
-0.25
+0.5
 0.01
 1
 NIL
