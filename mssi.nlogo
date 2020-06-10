@@ -7,6 +7,7 @@ globals [
   ps psd be cdu cds pan ;; current counts
   percent-PS percent-PSD percent-BE percent-CDU percent-CDS percent-PAN ;; percentage of current counts
   votes-PS votes-PSD votes-BE votes-CDU votes-CDS votes-PAN
+  persuasion
   elected-party
   last-election
   last-tick
@@ -147,6 +148,14 @@ to make-particles
 
     set charisma random-float(1)
     set willingnessToVote random-float(1)
+    set persuasion (list
+      random-float(1)
+      random-float(1)
+      random-float(1)
+      random-float(1)
+      random-float(1)
+      random-float(1)
+    )
 
     recolor
   ]
@@ -781,7 +790,7 @@ population-size
 population-size
 0
 500
-250.0
+500.0
 5
 1
 NIL
@@ -1039,7 +1048,7 @@ partyZone
 partyZone
 10
 50
-50.0
+25.0
 1
 1
 NIL
