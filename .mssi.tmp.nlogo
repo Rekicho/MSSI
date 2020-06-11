@@ -670,6 +670,7 @@ to balanceConviction
 end
 
 to recalculatePersuasion
+
   set persuasion (list
     (1 - (percent-PS / 100))
     (1 - (percent-PSD / 100))
