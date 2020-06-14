@@ -11,6 +11,7 @@ globals [
   elected-party
   last-election
   last-tick
+  last-advertising
 ]
 
 breed [particles particle]
@@ -125,6 +126,7 @@ to setup
   update-variables
   recalculatePersuasion
   set last-election 0
+  set last-advertising 0
 end
 
 to make-particles
@@ -225,6 +227,14 @@ to go
     perform-election
     ask particles [ decay ]
   ]
+
+  if (floor ticks) != last-advertising and ((remainder (floor ticks) ticksTillAdvertising) = 0)
+  [
+    set last-advertising (floor ticks)
+    ask particles [ sendAdvertising ]
+    output-print "Advertising"
+  ]
+
   if (floor ticks) != last-tick and ((remainder (floor ticks) 10) = 0)
   [
     set last-tick (floor ticks)
@@ -680,6 +690,17 @@ to recalculatePersuasion
   )
 end
 
+to sendAdvertising
+
+  ;; influence only 0.5% of the population, according to the information in the literature
+  let influence-chance random(1000)
+  if (influence-chance <= 5) [
+    ;; TODO: decide what to do for particles affected by advertising
+    ;; output-print conviction
+  ]
+
+end
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;; particle coloring procedures ;;;;;;;;;;;;;;
@@ -1121,33 +1142,18 @@ MONITOR
 966
 523
 1066
-569
+568
 persuasion-PS
 persuasion-PS
 2
 1
 11
 
-SLIDER
-6
-462
-179
-497
-persuasion-std
-persuasion-std
-0
-10
-5.0
-1
-1
-NIL
-HORIZONTAL
-
 MONITOR
 1089
 523
 1202
-569
+568
 persuasion-PSD
 persuasion-PSD
 2
@@ -1158,7 +1164,7 @@ MONITOR
 963
 593
 1068
-639
+638
 persuasion-BE
 persuasion-BE
 2
@@ -1169,7 +1175,7 @@ MONITOR
 1090
 596
 1208
-642
+641
 persuasion-CDU
 persuasion-CDU
 2
@@ -1180,7 +1186,7 @@ MONITOR
 961
 662
 1076
-708
+707
 persuasion-CDS
 persuasion-CDS
 2
@@ -1191,12 +1197,27 @@ MONITOR
 1092
 662
 1207
-708
+707
 persuasion-PAN
 persuasion-PAN
 2
 1
 11
+
+SLIDER
+1459
+53
+1632
+88
+ticksTillAdvertising
+ticksTillAdvertising
+10
+100
+20.0
+5
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
