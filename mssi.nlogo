@@ -205,7 +205,7 @@ to-report persuasion-PAN
 end
 
 to-report electedPartyName
-  if last-election > 0
+  if last-election <= 0
   [
     report ""
   ]
