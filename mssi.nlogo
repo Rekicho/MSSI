@@ -142,8 +142,6 @@ to make-particles
     let conviction-CDS 4.22
     let conviction-PAN 3.32
 
-    ;não pode ser < 0 ou > 1
-    ;soma deve ser 1
     set conviction (list
       random-normal conviction-PS std
       random-normal conviction-PSD std
@@ -206,6 +204,20 @@ to-report persuasion-PAN
   report (item 5 persuasion)
 end
 
+to-report electedPartyName
+  if last-election > 0
+  [
+    report ""
+  ]
+  (ifelse
+  elected-party = 0 [ report "PS" ]
+  elected-party = 1 [ report "PSD" ]
+  elected-party = 2 [ report "BE" ]
+  elected-party = 3 [ report "CDU" ]
+  elected-party = 4 [ report "CDS" ]
+  elected-party = 5 [ report "PAN" ])
+end
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;; go procedures  ;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -232,7 +244,6 @@ to go
   [
     set last-advertising (floor ticks)
     ask particles [ sendAdvertising ]
-    output-print "Advertising"
   ]
 
   if (floor ticks) != last-tick and ((remainder (floor ticks) 10) = 0)
@@ -562,8 +573,8 @@ to recalculate-parties [other-particle]  ;; party procedure
     let other-new-conviction (item i conviction2)
 
     if (i = party) or (i = party2) [
-      set new-conviction ((item i conviction) + (influence * (1 + (charisma2 - charisma)) * (item i conviction2)))
-      set other-new-conviction ((item i conviction2) + (influence * (1 + (charisma - charisma2)) * (item i conviction)))
+      set new-conviction ((item i conviction) + (influence * (1 + (charisma2 - charisma)) * (item i conviction2) * (item party2 persuasion) * (1 / ((getPartyMembers party2) + 1))))
+      set other-new-conviction ((item i conviction2) + (influence * (1 + (charisma - charisma2)) * (item i conviction) * (item party persuasion) * (1 / ((getPartyMembers party) + 1))))
     ]
 
     set sum-conviction (sum-conviction + new-conviction)
@@ -604,6 +615,16 @@ to recalculate-parties [other-particle]  ;; party procedure
 
 end
 
+to-report getPartyMembers [particleParty]
+  (ifelse
+  particleParty = 0 [ report ps ]
+  particleParty = 1 [ report psd ]
+  particleParty = 2 [ report be ]
+  particleParty = 3 [ report cdu ]
+  particleParty = 4 [ report cds ]
+  particleParty = 5 [ report pan ])
+end
+
 to perform-election
   set votes-PS 0
   set votes-PSD 0
@@ -642,7 +663,10 @@ end
 to decay
   if last-election > 0
   [
-    set conviction replace-item elected-party conviction ((item elected-party conviction) * decayPercentage)
+    let influence-chance random(1000)
+    if (influence-chance <= 100) [
+        set conviction replace-item elected-party conviction ((item elected-party conviction) * decayPercentage)
+    ]
   ]
   balanceConviction
 
@@ -695,10 +719,16 @@ to sendAdvertising
   ;; influence only 0.5% of the population, according to the information in the literature
   let influence-chance random(1000)
   if (influence-chance <= 5) [
-    ;; TODO: decide what to do for particles affected by advertising
-    ;; output-print conviction
+    let less-popular (getLessPopularParty)
+    set conviction replace-item less-popular conviction ((item less-popular conviction) * advertisingInfluence)
+    balanceConviction
   ]
 
+end
+
+to-report getLessPopularParty
+  let minimum min (list ps psd be cdu cds pan)
+  report position minimum (list ps psd be cdu cds pan)
 end
 
 
@@ -957,25 +987,25 @@ pan
 11
 
 SLIDER
-4
-377
-176
-410
+979
+316
+1151
+349
 influence
 influence
 0
 1
-0.5
+0.1
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-3
-416
-196
-449
+22
+471
+215
+504
 std
 std
 0
@@ -987,9 +1017,9 @@ NIL
 HORIZONTAL
 
 SLIDER
-1075
+1154
 51
-1247
+1326
 84
 ticksTillElection
 ticksTillElection
@@ -1002,21 +1032,21 @@ NIL
 HORIZONTAL
 
 MONITOR
-955
-48
-1053
-93
+993
+47
+1091
+92
 Elected Party
-elected-party
+electedPartyName
 0
 1
 11
 
 MONITOR
-1066
-206
-1138
-251
+957
+104
+1029
+149
 Votes PS
 votes-PS
 0
@@ -1024,10 +1054,10 @@ votes-PS
 11
 
 MONITOR
-1166
-203
-1247
-248
+1057
+101
+1138
+146
 Votes PSD
 votes-PSD
 17
@@ -1035,10 +1065,10 @@ votes-PSD
 11
 
 MONITOR
-1069
-296
-1141
-341
+957
+154
+1029
+199
 Votes BE
 votes-BE
 0
@@ -1046,10 +1076,10 @@ votes-BE
 11
 
 MONITOR
-1173
-299
-1255
-344
+1056
+153
+1138
+198
 Votes CDU
 votes-CDU
 17
@@ -1057,10 +1087,10 @@ votes-CDU
 11
 
 MONITOR
-1068
-381
-1150
-426
+956
+206
+1038
+251
 Votes CDS
 votes-CDS
 0
@@ -1068,10 +1098,10 @@ votes-CDS
 11
 
 MONITOR
-1189
-379
-1269
-424
+1056
+205
+1136
+250
 Votes PAN
 votes-PAN
 0
@@ -1079,25 +1109,25 @@ votes-PAN
 11
 
 SLIDER
-1078
-118
-1284
-151
+1156
+159
+1362
+192
 decayPercentage
 decayPercentage
 0
 1
-0.5
+0.8
 0.05
 1
 NIL
 HORIZONTAL
 
 SLIDER
-1438
-136
-1610
-169
+29
+649
+201
+682
 partyZone
 partyZone
 10
@@ -1109,10 +1139,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-1449
-221
-1621
-254
+29
+698
+201
+731
 zoneInfluence
 zoneInfluence
 0
@@ -1124,25 +1154,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-1345
-290
-1517
-323
+1157
+106
+1329
+139
 voteTreshold
 voteTreshold
 0
 1
-0.25
+0.1
 0.05
 1
 NIL
 HORIZONTAL
 
 MONITOR
-966
-523
-1066
-568
+953
+366
+1052
+411
 persuasion-PS
 persuasion-PS
 2
@@ -1150,43 +1180,43 @@ persuasion-PS
 11
 
 MONITOR
-1089
-523
-1202
-568
-persuasion-PSD
-persuasion-PSD
-2
-1
-11
-
-MONITOR
-963
-593
-1068
-638
-persuasion-BE
-persuasion-BE
-2
-1
-11
-
-MONITOR
-1090
-596
-1208
-641
-persuasion-CDU
-persuasion-CDU
-2
-1
-11
-
-MONITOR
-961
-662
 1076
-707
+366
+1189
+411
+persuasion-PSD
+persuasion-PSD
+2
+1
+11
+
+MONITOR
+950
+436
+1055
+481
+persuasion-BE
+persuasion-BE
+2
+1
+11
+
+MONITOR
+1077
+439
+1195
+484
+persuasion-CDU
+persuasion-CDU
+2
+1
+11
+
+MONITOR
+948
+505
+1063
+550
 persuasion-CDS
 persuasion-CDS
 2
@@ -1194,10 +1224,10 @@ persuasion-CDS
 11
 
 MONITOR
-1092
-662
-1207
-707
+1079
+505
+1194
+550
 persuasion-PAN
 persuasion-PAN
 2
@@ -1205,10 +1235,10 @@ persuasion-PAN
 11
 
 SLIDER
-1459
-53
-1632
-88
+988
+646
+1161
+679
 ticksTillAdvertising
 ticksTillAdvertising
 10
@@ -1218,6 +1248,101 @@ ticksTillAdvertising
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+993
+285
+1143
+303
+Interaction Influence:
+12
+0.0
+1
+
+SLIDER
+969
+599
+1185
+632
+advertisingInfluence
+advertisingInfluence
+1
+10
+10.0
+0.25
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+21
+432
+223
+477
+Population Party Distribution Standard Deviation
+12
+0.0
+1
+
+TEXTBOX
+1339
+116
+1537
+146
+Belief on party needed to vote
+12
+0.0
+1
+
+TEXTBOX
+1374
+169
+1687
+199
+Percentage of loss of belief on elected party
+12
+0.0
+1
+
+TEXTBOX
+216
+660
+366
+678
+Size of party zones
+12
+0.0
+1
+
+TEXTBOX
+217
+708
+494
+738
+Influence on population on party zone
+12
+0.0
+1
+
+TEXTBOX
+1274
+425
+1424
+470
+Persuasion a party has on convincing new people to join
+12
+0.0
+1
+
+TEXTBOX
+1197
+600
+1428
+645
+Influence Advertsing has on population less popular party belief
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
